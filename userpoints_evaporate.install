@@ -40,4 +40,5 @@ function userpoints_evaporate_update_6001() {
     taxonomy_save_term($term);
     variable_set('userpoints_evaporate_tid', $term['tid']);
   }
+  return array();
 }
