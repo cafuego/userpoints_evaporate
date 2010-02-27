@@ -3,11 +3,10 @@
 This module implements a cron hook that simply subtracts a set number of
 userpoints from each entry in the {userpoints} table every set interval.
 
-It does this by running a single SQL query.
+It also writes proper records to the {userpoints_txn} table, so users can
+see when and how many points have evaporated.
 
-== Caveats ==
-
-The {userpoints_txn} table is not updated when points evaporate.
+It does this by running two SQL queries via hook_cron.
 
 == Authors ==
 

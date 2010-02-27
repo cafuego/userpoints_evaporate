@@ -18,8 +18,8 @@ function userpoints_evaporate_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('userpoints_evaporate_admin_settings'),
     'access callback' => 'user_access',
-    'access arguments' => 'administer userpoints',
-    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer userpoints'),
+    'type' => MENU_NORMAL_ITEM,
   );
   return $items;
 }
@@ -49,6 +49,12 @@ function userpoints_evaporate_admin_settings() {
     '#options' => array(1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5, 6 => 6, 7 => 7, 8 =>8, 9 => 9),
     '#default_value' => variable_get('userpoints_evaporate_number', 1),
   );
+  $form['userpoints_evaporate_description'] = array(
+    '#title' => 'Description',
+    '#description' => t('An optional description to be added in \'My points\' when points are evaporated.'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('userpoints_evaporate_description', ''),
+  );
   return system_settings_form($form);
 }
 
@@ -65,21 +71,42 @@ function userpoints_evaporate_cron() {
     return;
   }
 
-  // Create the query to be run.
+  // Create a query to add entry in the {userpoints_txn} table for each
+  // user we're about to evaporate some points from.
   //
-  $query = "UPDATE {userpoints} SET points = points - %d";
-  $args = array(variable_get('userpoints_evaporate_number', 1));
+  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, changed, description, tid)
+                SELECT uid, 1, -%d, %d, %d, '%s', %d, '%s' FROM {userpoints}";
+  $args_txn = array(
+    variable_get('userpoints_evaporate_number', 1),
+    time(),
+    variable_get('userpoints_evaporate_description', ''),
+    variable_get('userpoints_evaporate_tid', userpoints_get_default_tid()
+    'evaporate'),
+  );
+
+  // Create the query to remove points.
+  //
+  $query_ttl = "UPDATE {userpoints} SET points = points - %d";
+  $args_ttl = array(variable_get('userpoints_evaporate_number', 1));
 
   // If the no_negative module is installed, don't allow points to go negative.
   //
   if (module_exists("userpoints_no_negative")) {
-    $query .= " WHERE points >= %d";
-    $args[] = variable_get('userpoints_evaporate_number', 1);
+    $query_txn .= " WHERE points >= %d";
+    $args_txn[] = variable_get('userpoints_evaporate_number', 1);
+
+    $query_ttl .= " WHERE points >= %d";
+    $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
   }
 
-  // Run the update query to evaporate some points
+  // Run the query to add relevant entries in the {userpoints_txn} table.
   //
-  db_query($query, $args);
+  db_query($query_txn, $args_txn);
+
+  // Run the update query to evaporate some points from the {userpoints} table.
+  //
+  db_query($query_ttl, $args_ttl);
+
 
   // And set a new timestamp.
   //
