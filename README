@@ -1,0 +1,19 @@
+== Userpoints Evaporate ==
+
+This module implements a cron hook that simply subtracts a set number of
+userpoints from each entry in the {userpoints} table every set interval.
+
+It does this by running a single SQL query.
+
+== Caveats ==
+
+The {userpoints_txn} table is not updated when points evaporate.
+
+== Authors ==
+
+Jerry Witt <mcfilms>
+Peter Lieverdink <me@cafuego.net>
+
+== License ==
+
+http://www.gnu.org/licenses/gpl-2.0.html

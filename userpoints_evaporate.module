@@ -1,0 +1,91 @@
+<?php
+/**
+ * A few defines that the module wants to use.
+ */
+define('USERPOINTS_EVAPORATE_HOUR', 60 * 60);
+define('USERPOINTS_EVAPORATE_DAY', 24 * USERPOINTS_EVAPORATE_HOUR);
+define('USERPOINTS_EVAPORATE_WEEK', 7 * USERPOINTS_EVAPORATE_DAY);
+
+/**
+ * Implementation of hook_menu()
+ *
+ * Module administration
+ */
+function userpoints_evaporate_menu() {
+  $items['admin/settings/userpoints/evaporate'] = array(
+    'title' => 'Evaporation Settings',
+    'description' => t('Change settings for the userpoints_evaporate module.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('userpoints_evaporate_admin_settings'),
+    'access callback' => 'user_access',
+    'access arguments' => 'administer userpoints',
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Display the settings form.
+ */
+function userpoints_evaporate_admin_settings() {
+
+  $options = array(
+    USERPOINTS_EVAPORATE_HOUR => t('Once an hour'),
+    USERPOINTS_EVAPORATE_DAY => t('Once a day'),
+    USERPOINTS_EVAPORATE_WEEK => t('Once a week'),
+  );
+
+  $form['userpoints_evaporate_interval'] = array(
+    '#title' => 'Interval',
+    '#description' => t('How quickly do userpoints evaporate?'),
+    '#type' => 'select',
+    '#options' => $options,
+    '#default_value' => variable_get('userpoints_evaporate_interval', USERPOINTS_EVAPORATE_DAY),
+  );
+  $form['userpoints_evaporate_number'] = array(
+    '#title' => 'Number',
+    '#description' => t('How many points evaporate at once?'),
+    '#type' => 'select',
+    '#options' => array(1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5, 6 => 6, 7 => 7, 8 =>8, 9 => 9),
+    '#default_value' => variable_get('userpoints_evaporate_number', 1),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Implementation of hook_cron()
+ *
+ * Do the actual work on cron run.
+ */
+function userpoints_evaporate_cron() {
+
+  // If last run time plus interval is greater than now, it's not time to run yet.
+  //
+  if (variable_get('userpoints_evaporate_timestamp', 0) + variable_get('userpoints_evaporate_interval', USERPOINTS_EVAPORATE_DAY) > time() ) {
+    return;
+  }
+
+  // Create the query to be run.
+  //
+  $query = "UPDATE {userpoints} SET points = points - %d";
+  $args = array(variable_get('userpoints_evaporate_number', 1));
+
+  // If the no_negative module is installed, don't allow points to go negative.
+  //
+  if (module_exists("userpoints_no_negative")) {
+    $query .= " WHERE points >= %d";
+    $args[] = variable_get('userpoints_evaporate_number', 1);
+  }
+
+  // Run the update query to evaporate some points
+  //
+  db_query($query, $args);
+
+  // And set a new timestamp.
+  //
+  variable_set('userpoints_evaporate_timestamp', time());
+
+  // And write a log entry to the watchdog table.
+  //
+  watchdog('userpoints_evaporate', 'userpoints_evaporate cron run evaporated some points', array(), WATCHDOG_INFO);
+}

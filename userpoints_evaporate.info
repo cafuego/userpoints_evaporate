@@ -1,0 +1,5 @@
+name = Userpoints Evaporate
+description = Automatically remove (evaporate) userpoints over time.
+package = Userpoints
+dependencies[] = userpoints
+core = 6.x
