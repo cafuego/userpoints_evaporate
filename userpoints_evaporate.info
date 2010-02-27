@@ -3,4 +3,3 @@ description = Automatically remove (evaporate) userpoints over time.
 package = Userpoints
 dependencies[] = userpoints
 core = 6.x
-version = 0.2-dev
