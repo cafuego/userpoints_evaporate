@@ -6,6 +6,9 @@ define('USERPOINTS_EVAPORATE_HOUR', 60 * 60);
 define('USERPOINTS_EVAPORATE_DAY', 24 * USERPOINTS_EVAPORATE_HOUR);
 define('USERPOINTS_EVAPORATE_WEEK', 7 * USERPOINTS_EVAPORATE_DAY);
 
+// Run time offset - 3 minutes.
+define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3 );
+
 /**
  * Implementation of hook_menu()
  *
@@ -71,6 +74,16 @@ function userpoints_evaporate_cron() {
     return;
   }
 
+  // Set a new timestamp.
+  //
+  // To avoid bug #733358 where due to variable run length the timestamp isn't always
+  // the same interval of seconds apart, let's say we ran 3 minutes ago. Also, set the
+  // timestamp before the module runs its queries, to avoid more time uncertainty.
+  //
+  // This will work fine unless you run cron every 4 minutes. So don't do that. Ever.
+  //
+  variable_set('userpoints_evaporate_timestamp', (time() - USERPOINTS_EVAPORATE_OFFSET));
+
   // Create a query to add entry in the {userpoints_txn} table for each
   // user we're about to evaporate some points from.
   //
@@ -107,11 +120,6 @@ function userpoints_evaporate_cron() {
   // Run the update query to evaporate some points from the {userpoints} table.
   //
   db_query($query_ttl, $args_ttl);
-
-
-  // And set a new timestamp.
-  //
-  variable_set('userpoints_evaporate_timestamp', time());
 
   // And write a log entry to the watchdog table.
   //
