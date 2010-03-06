@@ -7,7 +7,7 @@ define('USERPOINTS_EVAPORATE_DAY', 24 * USERPOINTS_EVAPORATE_HOUR);
 define('USERPOINTS_EVAPORATE_WEEK', 7 * USERPOINTS_EVAPORATE_DAY);
 
 // Run time offset - 3 minutes.
-define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3 );
+define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3);
 
 /**
  * Implementation of hook_menu()
