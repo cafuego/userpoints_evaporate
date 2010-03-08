@@ -8,10 +8,31 @@ see when and how many points have evaporated.
 
 It does this by running two SQL queries via hook_cron.
 
+
+== Requirements ==
+
+To make use of userpoints_evaporate you will need to install the userpoints
+module. http://drupal.org/project/userpoints  You must also periodically
+run the Drupal cron script.
+
+
+== Installation ==
+
+Extract the module to sites/*/modules and enable it via the module admin
+page.
+
+
+== Configuration ==
+
+Browse to http://localhost/?q=admin/settings/userpoints_evaporate to change
+evaporation settings.
+
+
 == Authors ==
 
 Jerry Witt <mcfilms>
 Peter Lieverdink <me@cafuego.net>
+
 
 == License ==
 
