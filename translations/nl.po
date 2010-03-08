@@ -18,10 +18,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n==1 ? 0 : 1;\n"
 
-#: userpoints_evaporate.module:20
-msgid "Change settings for the userpoints_evaporate module."
-msgstr "Verander instellingen voor de userpoints_evaporate module."
-
 #: userpoints_evaporate.module:36
 msgid "Once an hour"
 msgstr "Eén keer per uur"

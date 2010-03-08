@@ -17,7 +17,7 @@ define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3);
 function userpoints_evaporate_menu() {
   $items['admin/settings/userpoints/evaporate'] = array(
     'title' => 'Evaporation Settings',
-    'description' => t('Change settings for the userpoints_evaporate module.'),
+    'description' => 'Change settings for the userpoints_evaporate module.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('userpoints_evaporate_admin_settings'),
     'access callback' => 'user_access',
