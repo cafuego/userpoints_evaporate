@@ -1,4 +1,4 @@
-# $Id$
+# $Id: userpoints_evaporate.pot,v 1.1 2010/03/08 21:48:25 cafuego Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>

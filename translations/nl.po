@@ -1,4 +1,4 @@
-# $Id$
+# $Id: nl.po,v 1.1 2010/03/08 21:48:25 cafuego Exp $
 #
 # DUTCH translation of userpoints_evaporate (drupal contrib)
 # Generated from files:
