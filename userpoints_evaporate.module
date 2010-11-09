@@ -5,6 +5,7 @@
 define('USERPOINTS_EVAPORATE_HOUR', 60 * 60);
 define('USERPOINTS_EVAPORATE_DAY', 24 * USERPOINTS_EVAPORATE_HOUR);
 define('USERPOINTS_EVAPORATE_WEEK', 7 * USERPOINTS_EVAPORATE_DAY);
+define('USERPOINTS_EVAPORATE_MONTH', 30 * USERPOINTS_EVAPORATE_DAY);
 
 // Run time offset - 3 minutes.
 define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3);
@@ -57,11 +58,10 @@ function userpoints_evaporate_cron() {
   // Create a query to add entry in the {userpoints_txn} table for each
   // user we're about to evaporate some points from.
   //
-  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, changed, description, tid, operation)
-                SELECT uid, 1, -%d, %d, %d, '%s', %d, '%s' FROM {userpoints}";
+  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, description, tid, operation)
+                SELECT up.uid, 1, -%d, %d, '%s', %d, '%s' FROM {userpoints} AS up";
   $args_txn = array(
     variable_get('userpoints_evaporate_number', 1),
-    time(),
     time(),
     variable_get('userpoints_evaporate_description', ''),
     variable_get('userpoints_evaporate_tid', userpoints_get_default_tid()),
@@ -73,15 +73,42 @@ function userpoints_evaporate_cron() {
   $query_ttl = "UPDATE {userpoints} SET points = points - %d";
   $args_ttl = array(variable_get('userpoints_evaporate_number', 1));
 
+  // If only for inactive users, check for last activity. This must be done
+  // before I check for the userpoints_no_negative module, as the INNER JOIN
+  // is more efficient than a sub-query and the sub-query might not get cached.
+  //
+  if (variable_get('userpoints_evaporate_inactive', 0)) {
+    // Calculate as a number of seconds.
+    $delta  = variable_get('userpoints_evaporate_inactive_unit', USERPOINTS_EVAPORATE_DAY);
+    $delta *= variable_get('userpoints_evaporate_inactive_delta', 1);
+
+    // Do an inner join on the users table to only get inactive ones.
+    $query_txn .= " INNER JOIN {users} AS u ON (up.uid = u.uid AND u.access < %d)";
+    $args_txn[] = time() - $delta;
+
+    // Add a subquery where clause to limit this to inactive users.
+    $query_ttl .= " WHERE uid IN (SELECT uid FROM {users} WHERE access < %d)";
+    $args_ttl[] = time() - $delta;
+  }
+
   // If the no_negative module is installed, don't allow points to go negative.
+  // Unfortunately I need to re-check whether this only needs to happen for
+  // inactive users, as the ttl query I'm appending to can be different if so.
   //
   if (module_exists("userpoints_no_negative")) {
-    $query_txn .= " WHERE points >= %d";
+    $query_txn .= " WHERE up.points >= %d";
     $args_txn[] = variable_get('userpoints_evaporate_number', 1);
 
-    $query_ttl .= " WHERE points >= %d";
-    $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
+    if (variable_get('userpoints_evaporate_inactive', 0)) {
+      $query_ttl .= " AND points >= %d";
+      $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
+    }
+    else {
+      $query_ttl .= " WHERE points >= %d";
+      $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
+    }
   }
+
 
   // Run the query to add relevant entries in the {userpoints_txn} table.
   //
