@@ -58,10 +58,11 @@ function userpoints_evaporate_cron() {
   // Create a query to add entry in the {userpoints_txn} table for each
   // user we're about to evaporate some points from.
   //
-  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, description, tid, operation)
-                SELECT up.uid, 1, -%d, %d, '%s', %d, '%s' FROM {userpoints} AS up";
+  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, changed, description, tid, operation)
+                SELECT up.uid, 1, -%d, %d, %d, '%s', %d, '%s' FROM {userpoints} AS up";
   $args_txn = array(
     variable_get('userpoints_evaporate_number', 1),
+    time(),
     time(),
     variable_get('userpoints_evaporate_description', ''),
     variable_get('userpoints_evaporate_tid', userpoints_get_default_tid()),
