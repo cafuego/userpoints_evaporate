@@ -82,7 +82,10 @@ function userpoints_evaporate_cron() {
   //
   // This will work fine unless you run cron every 4 minutes. So don't do that. Ever.
   //
-  variable_set('userpoints_evaporate_timestamp', (time() - USERPOINTS_EVAPORATE_OFFSET));
+  // However, do NOT set the timestamp in the variable table until the actual update
+  // queries complete. See #963908.
+  //
+  $timestamp = time() - USERPOINTS_EVAPORATE_OFFSET;
 
   // Create a query to add entry in the {userpoints_txn} table for each
   // user we're about to evaporate some points from.
@@ -120,6 +123,10 @@ function userpoints_evaporate_cron() {
   // Run the update query to evaporate some points from the {userpoints} table.
   //
   db_query($query_ttl, $args_ttl);
+
+  // Now update the timstamp, so hook_cron knows we ran. And finished.
+  //
+  variable_set('userpoints_evaporate_timestamp', $timestamp);
 
   // And write a log entry to the watchdog table.
   //

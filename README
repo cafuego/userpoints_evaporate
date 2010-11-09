@@ -28,6 +28,20 @@ Browse to http://localhost/?q=admin/settings/userpoints_evaporate to change
 evaporation settings.
 
 
+== Caveats ==
+
+The userpoints module does not create an index on the points column in its
+table, but this module uses that column in a WHERE clause. That means that
+if it has a LOT of entries (i.e.: if you have a lot of users) the queries
+executed by userpoints_evaporate may be very slow. Until issue #792944 is
+addressed, you cna add the index manually:
+
+  ALTER TABLE userpoints ADD INDEX 'points';
+
+Once (if) userpoints.module is updated, you will need to drop this index
+again before you run update.php.
+
+
 == Authors ==
 
 Jerry Witt <mcfilms>
