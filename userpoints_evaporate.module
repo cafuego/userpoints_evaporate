@@ -36,94 +36,112 @@ function userpoints_evaporate_menu() {
  */
 function userpoints_evaporate_cron() {
 
-  // If last run time plus interval is greater than now, it's not time to run yet.
+  // Cycle through the meat of the module for each enabled points taxonomy term.
   //
-  if (variable_get('userpoints_evaporate_timestamp', 0) + variable_get('userpoints_evaporate_interval', USERPOINTS_EVAPORATE_DAY) > time() ) {
-    return;
-  }
+  $settings = variable_get('userpoints_evaporate', array());
 
-  // Set a new timestamp.
-  //
-  // To avoid bug #733358 where due to variable run length the timestamp isn't always
-  // the same interval of seconds apart, let's say we ran 3 minutes ago. Also, set the
-  // timestamp before the module runs its queries, to avoid more time uncertainty.
-  //
-  // This will work fine unless you run cron every 4 minutes. So don't do that. Ever.
-  //
-  // However, do NOT set the timestamp in the variable table until the actual update
-  // queries complete. See #963908.
-  //
-  $timestamp = time() - USERPOINTS_EVAPORATE_OFFSET;
+  foreach ($settings as $tid => $setting) {
+    // Early return if not enabled for this term or no interval is specified.
+    if (empty($setting['enabled']) || empty($setting['interval']))
+      continue;
 
-  // Create a query to add entry in the {userpoints_txn} table for each
-  // user we're about to evaporate some points from.
-  //
-  $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, changed, description, tid, operation)
+    // If last run time plus interval is greater than now, it's not time to run yet.
+    //
+    if (($setting['timestamp'] + $setting['interval']) > time() ) {
+      return;
+    }
+
+    // Set a new timestamp.
+    //
+    // To avoid bug #733358 where due to variable run length the timestamp isn't always
+    // the same interval of seconds apart, let's say we ran 3 minutes ago. Also, set the
+    // timestamp before the module runs its queries, to avoid more time uncertainty.
+    //
+    // This will work fine unless you run cron every 4 minutes. So don't do that. Ever.
+    //
+    // However, do NOT set the timestamp in the variable table until the actual update
+    // queries complete. See #963908.
+    //
+    $timestamp = time() - USERPOINTS_EVAPORATE_OFFSET;
+
+    // Update the settings array with the new timestamp, so it's there when we save it
+    // after the run completes.
+    $settings[$tid]['timestamp'] = $timestamp;
+
+    // Create a query to add entry in the {userpoints_txn} table for each
+    // user we're about to evaporate some points from.
+    //
+    $query_txn = "INSERT INTO {userpoints_txn} (uid, approver_uid, points, time_stamp, changed, description, tid, operation)
                 SELECT up.uid, 1, -%d, %d, %d, '%s', %d, '%s' FROM {userpoints} AS up";
-  $args_txn = array(
-    variable_get('userpoints_evaporate_number', 1),
-    time(),
-    time(),
-    variable_get('userpoints_evaporate_description', ''),
-    variable_get('userpoints_evaporate_tid', userpoints_get_default_tid()),
-    'evaporate',
-  );
+    $args_txn = array(
+      $setting['number'],
+      time(),
+      time(),
+      $setting['description'],
+      $tid,
+      'evaporate',
+    );
 
-  // Create the query to remove points.
-  //
-  $query_ttl = "UPDATE {userpoints} SET points = points - %d";
-  $args_ttl = array(variable_get('userpoints_evaporate_number', 1));
+    // Create the query to remove points.
+    //
+    $query_ttl = "UPDATE {userpoints} SET points = points - %d WHERE tid = %d";
+    $args_ttl = array($setting['number'], $tid);
 
-  // If only for inactive users, check for last activity. This must be done
-  // before I check for the userpoints_no_negative module, as the INNER JOIN
-  // is more efficient than a sub-query and the sub-query might not get cached.
-  //
-  if (variable_get('userpoints_evaporate_inactive', 0)) {
-    // Calculate as a number of seconds.
-    $delta  = variable_get('userpoints_evaporate_inactive_unit', USERPOINTS_EVAPORATE_DAY);
-    $delta *= variable_get('userpoints_evaporate_inactive_delta', 1);
+    // If only for inactive users, check for last activity. This must be done
+    // before I check for the userpoints_no_negative module, as the INNER JOIN
+    // is more efficient than a sub-query and the sub-query might not get cached.
+    //
+    if ($setting['inactive']['enabled']) {
+      // Calculate as a number of seconds.
+      $delta  = $setting['inactive']['unit'];
+      $delta *= $setting['inactive']['delta'];
 
-    // Do an inner join on the users table to only get inactive ones.
-    $query_txn .= " INNER JOIN {users} AS u ON (up.uid = u.uid AND u.access < %d)";
-    $args_txn[] = time() - $delta;
+      // Do an inner join on the users table to only get inactive ones.
+      $query_txn .= " INNER JOIN {users} AS u ON (up.uid = u.uid AND u.access < %d)";
+      $args_txn[] = time() - $delta;
 
-    // Add a subquery where clause to limit this to inactive users.
-    $query_ttl .= " WHERE uid IN (SELECT uid FROM {users} WHERE access < %d)";
-    $args_ttl[] = time() - $delta;
-  }
-
-  // If the no_negative module is installed, don't allow points to go negative.
-  // Unfortunately I need to re-check whether this only needs to happen for
-  // inactive users, as the ttl query I'm appending to can be different if so.
-  //
-  if (module_exists("userpoints_no_negative")) {
-    $query_txn .= " WHERE up.points >= %d";
-    $args_txn[] = variable_get('userpoints_evaporate_number', 1);
-
-    if (variable_get('userpoints_evaporate_inactive', 0)) {
-      $query_ttl .= " AND points >= %d";
-      $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
+      // Add a subquery where clause to limit this to inactive users.
+      $query_ttl .= " WHERE uid IN (SELECT uid FROM {users} WHERE access < %d)";
+      $args_ttl[] = time() - $delta;
     }
-    else {
-      $query_ttl .= " WHERE points >= %d";
-      $args_ttl[] = variable_get('userpoints_evaporate_number', 1);
+
+    // If the no_negative module is installed, don't allow points to go negative.
+    // Unfortunately I need to re-check whether this only needs to happen for
+    // inactive users, as the ttl query I'm appending to can be different if so.
+    //
+    if (module_exists("userpoints_no_negative")) {
+      $query_txn .= " WHERE up.points >= %d";
+      $args_txn[] = $setting['number'];
+
+      if ($setting['inactive']['enabled']) {
+        $query_ttl .= " AND points >= %d";
+        $args_ttl[] = $setting['number'];
+      }
+      else {
+        $query_ttl .= " WHERE points >= %d";
+        $args_ttl[] = $setting['number'];
+      }
     }
+
+    // Run the query to add relevant entries in the {userpoints_txn} table.
+    //
+    db_query($query_txn, $args_txn);
+
+    // Run the update query to evaporate some points from the {userpoints} table.
+    //
+    db_query($query_ttl, $args_ttl);
+
+    // Now save the settings with the updated timestamp, so hook_cron knows we ran
+    // and finished for this term.
+    //
+    variable_set('userpoints_evaporate', $settings);
+
+    // Get the taxo term for this tid, so the watchdog entry can be prettier.
+    $term = taxonomy_get_term($tid);
+
+    // And write a log entry to the watchdog table.
+    //
+    watchdog('userpoints_evaporate', 'userpoints_evaporate cron run evaporated some @term points', array('@term' => $term->name), WATCHDOG_INFO);
+
   }
-
-
-  // Run the query to add relevant entries in the {userpoints_txn} table.
-  //
-  db_query($query_txn, $args_txn);
-
-  // Run the update query to evaporate some points from the {userpoints} table.
-  //
-  db_query($query_ttl, $args_ttl);
-
-  // Now update the timstamp, so hook_cron knows we ran. And finished.
-  //
-  variable_set('userpoints_evaporate_timestamp', $timestamp);
-
-  // And write a log entry to the watchdog table.
-  //
-  watchdog('userpoints_evaporate', 'userpoints_evaporate cron run evaporated some points', array(), WATCHDOG_INFO);
 }

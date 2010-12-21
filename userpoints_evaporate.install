@@ -42,3 +42,36 @@ function userpoints_evaporate_update_6001() {
   }
   return array();
 }
+
+/**
+ * Rewrite old settings to the new array format.
+ */
+function userpoints_evaporate_update_6200() {
+  $tid = variable_get('userpoints_evaporate_tid', 0);
+
+  if ($tid) {
+    // Stick the old settings in the new array.
+    $settings = array(
+      $tid => array(
+        'enabled' => 1,
+        'number' => variable_get('userpoints_evaporate_number', 1),
+        'description' => variable_get('userpoints_evaporate_description', ''),
+        'interval' => variable_get('userpoints_evaporate_interval', 0),
+        'timestamp' => variable_get('userpoints_evaporate_timestamp', 0),
+        'inactive' => array(
+          'enabled' => variable_get('userpoints_evaporate_inactive', 0),
+          'delta' => variable_get('userpoints_evaporate_inactive_delta', 1),
+          'unit' => variable_get('userpoints_evaporate_inactive_unit', USERPOINTS_EVAPORATE_DAY),
+        ),
+      ),
+    );
+
+    variable_set('userpoints_evaporate', $settings);
+    db_query("DELETE FROM {variable} WHERE name LIKE 'userpoints_evaporate_%'");
+    $ret[] = array('success' => TRUE, 'query' => 'Your userpoints_evaporate settings have been migrated to a new format and evaporation is enabled. Please verify these new settings as soon as possible.');
+  }
+  else {
+    $ret[] = array('success' => FALSE, 'query' => 'Your userpoints_evaporate settings could not be migrated to a new format. Please update the module settings as soon as possible. The original settings have not been deleted.');
+  }
+  return $ret;
+}
