@@ -101,7 +101,7 @@ function userpoints_evaporate_cron() {
       $args_txn[] = time() - $delta;
 
       // Add a subquery where clause to limit this to inactive users.
-      $query_ttl .= " WHERE uid IN (SELECT uid FROM {users} WHERE access < %d)";
+      $query_ttl .= " AND uid IN (SELECT uid FROM {users} WHERE access < %d)";
       $args_ttl[] = time() - $delta;
     }
 
