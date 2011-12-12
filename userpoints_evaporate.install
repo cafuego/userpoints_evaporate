@@ -6,10 +6,10 @@
  */
 function userpoints_evaporate_install() {
   $result = db_select('taxonomy_vocabulary', 'v')
-           ->fields('v', array('vid'))
-           ->condition('machine_name', 'userpoints', '=')
-           ->execute()
-           ->fetch();
+    ->fields('v', array('vid'))
+    ->condition('machine_name', 'userpoints', '=')
+    ->execute()
+    ->fetch();
 
   if (!empty($result->vid)) {
     $term = new stdClass();
@@ -38,4 +38,19 @@ function userpoints_evaporate_uninstall() {
   db_delete('variable')
     ->condition('name', 'userpoints_evaporate%', 'LIKE')
     ->execute();
+}
+
+/**
+ * Store the points vid in a variable.
+ */
+function userpoints_evaporate_update_7000() {
+  $result = db_select('taxonomy_vocabulary', 'v')
+    ->fields('v', array('vid'))
+    ->condition('machine_name', 'userpoints', '=')
+    ->execute()
+    ->fetch();
+
+  if (!empty($result->vid)) {
+    variable_set('userpoints_evaporate_vid', $result->vid);
+  }
 }
