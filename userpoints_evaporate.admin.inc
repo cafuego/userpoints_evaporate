@@ -1,4 +1,5 @@
 <?php
+// $Id: userpoints_evaporate.admin.inc,v 1.1 2010/12/21 01:04:33 cafuego Exp $
 /**
  * Display the settings form.
  */
@@ -27,7 +28,7 @@ function userpoints_evaporate_admin_settings() {
 
     $form['userpoints_evaporate'][$term->tid] = array(
       '#type' => 'fieldset',
-      '#title' => $term->name . ' Points',
+      '#title' => check_plain($term->name),
       '#description' => t('Control evaporation settings for %term points.', array('%term' => $term->name)),
       '#collapsible' => TRUE,
       '#collapsed' => ($settings[$term->tid]['enabled']) ? FALSE : TRUE,
