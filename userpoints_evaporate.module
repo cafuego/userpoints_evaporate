@@ -16,7 +16,7 @@ define('USERPOINTS_EVAPORATE_OFFSET', 60 * 3);
  * Module administration
  */
 function userpoints_evaporate_menu() {
-  $items['admin/settings/userpoints/evaporate'] = array(
+  $items['admin/config/people/userpoints/evaporate'] = array(
     'title' => 'Evaporation Settings',
     'description' => 'Change settings for the userpoints_evaporate module.',
     'page callback' => 'drupal_get_form',
@@ -123,6 +123,7 @@ function userpoints_evaporate_cron() {
       }
     }
 
+/*
     // Run the query to add relevant entries in the {userpoints_txn} table.
     //
     db_query($query_txn, $args_txn);
@@ -134,10 +135,11 @@ function userpoints_evaporate_cron() {
     // Now save the settings with the updated timestamp, so hook_cron knows we ran
     // and finished for this term.
     //
+*/
     variable_set('userpoints_evaporate', $settings);
 
     // Get the taxo term for this tid, so the watchdog entry can be prettier.
-    $term = taxonomy_get_term($tid);
+    $term = taxonomy_term_load($tid);
 
     // And write a log entry to the watchdog table.
     //

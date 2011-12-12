@@ -5,6 +5,18 @@
  */
 function userpoints_evaporate_admin_settings() {
 
+  $default_settings = array(
+    'enabled' => FALSE, 
+    'interval' => USERPOINTS_EVAPORATE_DAY, 
+    'number' => 1,
+    'description' => '',
+    'inactive' => array(
+      'enabled' => FALSE, 
+      'delta' => 0, 
+      'unit' => USERPOINTS_EVAPORATE_DAY
+    )
+  );
+
   $options = array(
     USERPOINTS_EVAPORATE_HOUR => t('Once an hour'),
     USERPOINTS_EVAPORATE_DAY => t('Once a day'),
@@ -12,7 +24,7 @@ function userpoints_evaporate_admin_settings() {
   );
 
   // Load the userpoints vocabulary, so evaporate can be configured per term. Wahey!
-  $vid = db_result(db_query("SELECT vid FROM {vocabulary} WHERE module='userpoints'"));
+  $vid = variable_get('userpoints_evaporate_vid', 0);
   $terms = taxonomy_get_tree($vid);
 
   // Grab existing settings.
@@ -25,11 +37,15 @@ function userpoints_evaporate_admin_settings() {
   // Duplicate the evaporate settings for each term, and add an on/off radio button.
   //
   foreach ($terms as $term) {
+    // Load default settings, so as to avoid PHP warnings.
+    if (empty($settings[$term->tid])) {
+      $settings[$term->tid] = $default_settings;
+    }
 
     $form['userpoints_evaporate'][$term->tid] = array(
       '#type' => 'fieldset',
       '#title' => check_plain($term->name),
-      '#description' => t('Control evaporation settings for %term points.', array('%term' => $term->name)),
+      '#description' => t('Control evaporation settings for %term.', array('%term' => $term->name)),
       '#collapsible' => TRUE,
       '#collapsed' => ($settings[$term->tid]['enabled']) ? FALSE : TRUE,
     );
@@ -37,14 +53,14 @@ function userpoints_evaporate_admin_settings() {
     $form['userpoints_evaporate'][$term->tid]['enabled'] = array(
       '#type' => 'checkbox',
       '#title' => 'Enabled',
-      '#description' => t('Control whether or not %term points should evaporate.', array('%term' => $term->name)),
+      '#description' => t('Control whether or not %term should evaporate.', array('%term' => $term->name)),
       '#options' => array(0, 1),
       '#default_value' => $settings[$term->tid]['enabled'],
     );
 
     $form['userpoints_evaporate'][$term->tid]['interval'] = array(
       '#title' => 'Interval',
-      '#description' => t('How quickly do %term points evaporate?', array('%term' => $term->name)),
+      '#description' => t('How quickly do %term evaporate?', array('%term' => $term->name)),
       '#type' => 'select',
       '#options' => $options,
       '#default_value' => ($settings[$term->tid]['interval']) ? $settings[$term->tid]['interval'] : USERPOINTS_EVAPORATE_DAY,
@@ -52,7 +68,7 @@ function userpoints_evaporate_admin_settings() {
 
     $form['userpoints_evaporate'][$term->tid]['number'] = array(
       '#title' => 'Number',
-      '#description' => t('How many %term points evaporate at once?', array('%term' => $term->name)),
+      '#description' => t('How many %term evaporate at once?', array('%term' => $term->name)),
       '#type' => 'select',
       '#options' => array(1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5, 6 => 6, 7 => 7, 8 =>8, 9 => 9, 10 => 10),
       '#default_value' => ($settings[$term->tid]['number']) ? $settings[$term->tid]['number'] : 1,
@@ -60,7 +76,7 @@ function userpoints_evaporate_admin_settings() {
 
     $form['userpoints_evaporate'][$term->tid]['description'] = array(
       '#title' => 'Description',
-      '#description' => t('An optional description to be added in \'My points\' when %term points are evaporated.', array('%term' => $term->name)),
+      '#description' => t('An optional description to be added in \'My points\' when %term are evaporated.', array('%term' => $term->name)),
       '#type' => 'textfield',
       '#default_value' => $settings[$term->tid]['description'],
     );
@@ -72,7 +88,7 @@ function userpoints_evaporate_admin_settings() {
 
     $form['userpoints_evaporate'][$term->tid]['inactive']['enabled'] = array(
       '#title' => 'Inactive Users Only',
-      '#description' => t('Should users be inactive for a certain time before they start losing %term points?', array('%term' => $term->name)),
+      '#description' => t('Should users be inactive for a certain time before they start losing %term?', array('%term' => $term->name)),
       '#type' => 'checkbox',
       '#options' => array(0, 1),
       '#default_value' => ($settings[$term->tid]['inactive']['enabled']) ? $settings[$term->tid]['inactive']['enabled'] : 0,
@@ -108,7 +124,7 @@ function userpoints_evaporate_admin_settings() {
  */
 function userpoints_evaporate_admin_settings_validate($form, &$form_state) {
   // Load the userpoints vocabulary, so evaporate can be configured per term. Wahey!
-  $vid = db_result(db_query("SELECT vid FROM {vocabulary} WHERE module='userpoints'"));
+  $vid = variable_get('userpoints_evaporate_vid', 0);
   $terms = taxonomy_get_tree($vid);
 
   foreach ($terms as $term) {
