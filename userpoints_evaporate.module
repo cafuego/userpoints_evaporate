@@ -90,9 +90,11 @@ function userpoints_evaporate_cron() {
     );
 
     // Create the query to remove points.
-    //
-    $query_ttl = "UPDATE {userpoints} SET points = points - :points WHERE tid = :tid";
-    $args_ttl = array(':points' => $setting['number'], ':tid' => $tid);
+    // The named placeholder for number managed to get quoted as a string, even
+    // though it is a number, so instead we're in-lining the value without a
+    // placeholder. Casting to int should make this safe-ish.
+    $query_ttl = "UPDATE {userpoints} SET points = points - ". intval($setting['number']) ." WHERE tid = :tid";
+    $args_ttl = array(':tid' => $tid);
 
     // If only for inactive users, check for last activity. This must be done
     // before I check for the userpoints_no_negative module, as the INNER JOIN
